@@ -22,7 +22,7 @@ function LRUCache(maxSize) {
         this.next = _head;
 
         // Private variables
-        var _expiresAt = (typeof ttl === 'number') ? new Date().getTime() + ttl : null;
+        var _expiresAt = (typeof ttl === 'number' && ttl > 0) ? new Date().getTime() + ttl : null;
 
         // Public methods
         this.getKey = function() { return key; }
@@ -33,7 +33,7 @@ function LRUCache(maxSize) {
 
         this.touch = function(ttl) {
             // Update the expirary if it has been provided and is a number
-            if (typeof ttl === 'number') { _expiresAt = new Date().getTime() + ttl; }
+            if (typeof ttl === 'number' && ttl > 0) { _expiresAt = new Date().getTime() + ttl; }
 
             if (node.previous === null) { return; } // If the node is already the head, do nothing
 
@@ -41,7 +41,7 @@ function LRUCache(maxSize) {
 
             // If the node is at the tail, update the reference to _tail
             if (node.next === null) {
-                _tail = node.previous; 
+                _tail = node.previous;
             } else { // Else just update the next node's reference to previous
                 node.next.previous = node.previous;
             }
@@ -51,30 +51,11 @@ function LRUCache(maxSize) {
             node.next = _head;
             _head.previous = node;
             _head = node;
-        }
+        };
     }
 
     // Public methods
-    this.set = function(key, data, ttl) {
-        if (key === undefined || data === undefined) { return; } // If key or data are not provided, do nothing
-
-        // If the cache already contains a node with the given key, update the data
-        if (_cache.hasOwnProperty(key)) {
-            var node = _cache[key];
-            node.data = data;
-            node.touch(ttl);
-            return;
-        }
-
-        if (_size >= _maxSize) { evict(); } // If the cache is full, evict the last used element
-
-        var node = new Node(key, data, ttl);
-        if (_head !== null) { _head.previous = node; } // If _head is not null, update it's reference to previous
-        _head = node; // Update the reference to _head
-        if (_tail === null) { _tail = node; } // If this is the first element set _tail as well as _head
-        _cache[key] = node; // Update the cache for quick searching
-        _size++; // Increment the size of the cache
-    };
+    this.capacity = function() { return _maxSize; }
 
     this.get = function(key) {
         if (!_cache.hasOwnProperty(key)) { return null; } // If the key is not in the cache, return null
@@ -82,6 +63,34 @@ function LRUCache(maxSize) {
         node.touch();
         return node;
     };
+
+    this.head = function() { return _head; }
+
+    this.put = function(key, data, ttl) {
+        if (key === undefined || data === undefined) { return; } // If key or data are not provided, do nothing
+
+        // If the cache already contains a node with the given key, update the data
+        var node = null;
+        if (_cache.hasOwnProperty(key)) {
+            node = _cache[key];
+            node.data = data;
+            node.touch(ttl);
+            return node;
+        }
+
+        if (_size >= _maxSize) { evict(); } // If the cache is full, evict the last used element
+
+        node = new Node(key, data, ttl);
+        if (_head !== null) { _head.previous = node; } // If _head is not null, update it's reference to previous
+        _head = node; // Update the reference to _head
+        if (_tail === null) { _tail = node; } // If this is the first element set _tail as well as _head
+        _cache[key] = node; // Update the cache for quick searching
+        _size++; // Increment the size of the cache
+
+        return node;
+    };
+
+    this.tail = function() { return _tail; }
 
     // Private methods
     var evict = function() {
